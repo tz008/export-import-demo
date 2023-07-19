@@ -53,12 +53,12 @@ public class StudentServiceImpl extends ServiceImpl<StudentDao, Student> impleme
     }
 
     @Override
-    public void exportPdf(HttpServletResponse response) throws IOException, DocumentException {
+    public void exportPdf(HttpServletResponse response) throws Exception {
         List<Student> studentList = this.list();
         if (CollectionUtils.isEmpty(studentList)) {
             return;
         }
-        PdfUtils.exportPdf(response,studentList.toString());
+        PdfUtils.exportPdf(response,studentList);
     }
 
     @Override

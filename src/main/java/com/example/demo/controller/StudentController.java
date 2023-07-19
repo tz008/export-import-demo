@@ -32,7 +32,7 @@ public class StudentController {
     }
 
     @PostMapping("/exportPdf")
-    public void exportPdf(HttpServletResponse response) throws IOException, DocumentException {
+    public void exportPdf(HttpServletResponse response) throws Exception {
         studentService.exportPdf(response);
     }
 

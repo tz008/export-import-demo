@@ -33,7 +33,7 @@ public interface StudentService extends IService<Student> {
      * @param response 返回流
      * @exception IOException io异常
      */
-    void exportPdf(HttpServletResponse response) throws IOException, DocumentException;
+    void exportPdf(HttpServletResponse response) throws Exception;
 
     /**
      * 导入
