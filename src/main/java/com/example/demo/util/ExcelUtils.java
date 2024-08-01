@@ -1,14 +1,15 @@
 package com.example.demo.util;
 
 import com.alibaba.excel.EasyExcelFactory;
+import com.alibaba.excel.write.handler.SheetWriteHandler;
+import com.alibaba.excel.write.metadata.holder.WriteSheetHolder;
+import com.alibaba.excel.write.metadata.holder.WriteWorkbookHolder;
 import com.alibaba.excel.write.metadata.style.WriteCellStyle;
 import com.alibaba.excel.write.metadata.style.WriteFont;
 import com.alibaba.excel.write.style.HorizontalCellStyleStrategy;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
-import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddressList;
 import org.springframework.http.HttpHeaders;
-import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
@@ -44,6 +45,37 @@ public class ExcelUtils {
         EasyExcelFactory.write(response.getOutputStream(), clazz)
                 .head(clazz)
                 .registerWriteHandler(setCellStyle(fileName, response))
+                .sheet(fileName)
+                .doWrite(data);
+    }
+
+        /**
+     * 导出带下拉框的excel
+     *
+     * @param fileName 文件名称
+     * @param data     数据
+     * @param clazz    class
+     * @param response resp
+     */
+    public static void exportWithDropdown(String fileName, List<?> data, Class<?> clazz, HttpServletResponse response, List<String> dropDownList) throws IOException {
+        EasyExcelFactory.write(response.getOutputStream(), clazz)
+                .head(clazz)
+                .registerWriteHandler(setCellStyle(fileName, response))
+                .registerWriteHandler(new SheetWriteHandler() {
+                    @Override
+                    public void afterSheetCreate(WriteWorkbookHolder writeSheet, WriteSheetHolder writeSheetHolder) {
+                        Workbook workbook = writeSheetHolder.getSheet().getWorkbook();
+                        Sheet sheet = workbook.getSheetAt(0);
+                        // 下拉框的选择区域
+                        CellRangeAddressList cellRangeAddressList = new CellRangeAddressList(1, 100, 1, 1);
+                        // 创建下拉框
+                        DataValidationHelper helper = sheet.getDataValidationHelper();
+                        DataValidationConstraint constraint = helper.createExplicitListConstraint(dropDownList.toArray(new String[0]));
+                        DataValidation dataValidation = helper.createValidation(constraint, cellRangeAddressList);
+                        // 设置下拉框
+                        sheet.addValidationData(dataValidation);
+                    }
+                })
                 .sheet(fileName)
                 .doWrite(data);
     }
