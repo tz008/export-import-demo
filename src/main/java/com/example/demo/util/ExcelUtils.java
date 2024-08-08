@@ -80,6 +80,29 @@ public class ExcelUtils {
                 .doWrite(data);
     }
 
+    /**
+     * 导出excel到指定sheet页
+     *
+     * @param fileName      文件名称
+     * @param dataList      数据
+     * @param clazzList     class
+     * @param response      response
+     * @param sheetNameList sheet页名称列表
+     */
+    public static void exportSheet(String fileName, List<List<?>> dataList, List<Class<?>> clazzList, HttpServletResponse response, List<String> sheetNameList) throws IOException {
+        ExcelWriter excelWriter = EasyExcelFactory.write(response.getOutputStream())
+                .registerWriteHandler(setCellStyle(fileName, response))
+                .build();
+        for (int i = 0; i < sheetNameList.size(); i++) {
+            // 每次都要创建writeSheet 这里注意必须指定sheetNo 而且sheetName必须不一样。
+            WriteSheet writeSheet = EasyExcelFactory.writerSheet(i, sheetNameList.get(i))
+                    .head(clazzList.get(i))
+                    .build();
+            excelWriter.write(dataList.get(i), writeSheet);
+        }
+        excelWriter.finish();
+    }
+
 
     private static HorizontalCellStyleStrategy setCellStyle(String fileName, HttpServletResponse response) throws UnsupportedEncodingException {
         WriteCellStyle headWriteCellStyle = new WriteCellStyle();
