@@ -1,0 +1,138 @@
+// 合并单元格
+
+public class MergeCellTest{
+
+    public BaseResponse<String> overviewExport(EnergyConsumptionPlanDetailDTO req, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        List<EnergyConsumptionPlanOverviewSqlVO> overviewList = getOverviewList(req);
+        if (CollUtil.isEmpty(overviewList)) {
+            return BaseResponse.failed("无能耗计划总览数据");
+        }
+        // 记录需合并的行
+        Map<Integer, Integer> indexNumMap = new HashMap<>(16);
+        // 记录相同介质 数量
+        Map<EnergyConsumptionPlanOverviewSqlVO, Integer> mediumSameNumMap = new HashMap<>(16);
+        /**
+         *  循环每一列 这一列的下一列介质相同 就跳过当前循环 进入下一列继续比较 并放入map
+         *  后续都比较完也没有相同的 则将此列也放入map
+         **/
+        for (int i = 0; i < overviewList.size(); i++) {
+            EnergyConsumptionPlanOverviewSqlVO vo = overviewList.get(i);
+            if (CollectionUtils.isEmpty(mediumSameNumMap)) {
+                mediumSameNumMap.put(vo, i);
+            } else {
+                // 标记在map中是否存在能源介质一样的记录(需合并的行)
+                boolean flag = true;
+                for (Map.Entry<EnergyConsumptionPlanOverviewSqlVO, Integer> entry : mediumSameNumMap.entrySet()) {
+                    EnergyConsumptionPlanOverviewSqlVO key = entry.getKey();
+                    if (vo.getEnergyMedium().equals(key.getEnergyMedium())) {
+                        mediumSameNumMap.put(vo, mediumSameNumMap.get(key));
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag) {
+                    mediumSameNumMap.put(vo, i);
+                }
+            }
+        }
+        // 将记录的一样的介质数量 转化为 需要合并的行数
+        for (Map.Entry<EnergyConsumptionPlanOverviewSqlVO, Integer> entry : mediumSameNumMap.entrySet()) {
+            Integer index = entry.getValue();
+            indexNumMap.put(index, (indexNumMap.get(index) == null ? 0 : indexNumMap.get(index)) + 1);
+        }
+        // 请求数据字典 翻译code
+        List<String> classCodes = new ArrayList<>(2);
+        classCodes.add(productTypeCode);
+        classCodes.add(energyMediumCode);
+        Map<String, String> dataDictonaryMap = getDataDictionaryMap(classCodes);
+
+        // 设置响应头
+        String fileName = "能耗计划总览_" + DateUtil.formatDate(DateUtil.parseDateTime(req.getPlanStartTime())) + "-" + DateUtil.formatDate(DateUtil.parseDateTime(req.getPlanEndTime())) + ".xlsx";
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=" + FileUtils.setFileDownloadHeader(request, fileName));
+        // 将Excel文件写入响应输出流
+        // 定义表格列名与列宽
+        // 创建表格文档、表格样式等基本信息
+        try (OutputStream outputStream = response.getOutputStream(); Workbook wb = new XSSFWorkbook()) {
+            List<String> columns = Arrays.asList(StringConstant.ENERGY_MEDIUM_CHINESE, StringConstant.PRODUCT_TYPE_CHINESE, StringConstant.PLAN_CONSUMPTION_CHINESE, StringConstant.UNIT_CHINESE, StringConstant.PLAN_CONSUMPTION_SUM_CHINESE);
+            Sheet sheet = wb.createSheet("Sheet1");
+            Row row;
+            Cell cell;
+            CellStyle headerStyle = wb.createCellStyle();
+            headerStyle.setAlignment(HorizontalAlignment.CENTER);
+            Font headerFont = wb.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            // 设置列宽
+            for (int i = 0; i < columns.size(); i++) {
+                sheet.setColumnWidth(i, 5000);
+            }
+            // 创建表格表头
+            row = sheet.createRow(0);
+            for (int i = 0; i < columns.size(); i++) {
+                cell = row.createCell(i);
+                cell.setCellValue(columns.get(i));
+                cell.setCellStyle(headerStyle);
+            }
+            // 创建表格数据
+            CellStyle dataStyle = wb.createCellStyle();
+            // 上下居中
+            dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+            // 左右居中
+            dataStyle.setAlignment(HorizontalAlignment.CENTER);
+            for (int i = 0; i < overviewList.size(); i++) {
+                EnergyConsumptionPlanOverviewSqlVO vo = overviewList.get(i);
+                row = sheet.createRow(i + 1);
+                // 能源介质
+                cell = row.createCell(0);
+                cell.setCellValue(dataDictonaryMap.get(vo.getEnergyMedium()));
+                cell.setCellStyle(dataStyle);
+                // 产品类型
+                cell = row.createCell(1);
+                cell.setCellValue(dataDictonaryMap.get(vo.getProductType()));
+                cell.setCellStyle(dataStyle);
+                // 计划消耗量
+                cell = row.createCell(2);
+                cell.setCellValue(vo.getPlanConsumption().toString());
+                cell.setCellStyle(dataStyle);
+                // 单位
+                cell = row.createCell(3);
+                cell.setCellValue(vo.getUnit());
+                cell.setCellStyle(dataStyle);
+                // 计划消耗合计
+                cell = row.createCell(4);
+                cell.setCellValue(vo.getPlanConsumptionAmount().toString());
+                cell.setCellStyle(dataStyle);
+            }
+
+            // 合并数据
+            if (CollectionUtils.isNotEmpty(indexNumMap)) {
+                for (Map.Entry<Integer, Integer> entry : indexNumMap.entrySet()) {
+                    // 合并能源介质行
+                    mergeCell(sheet, entry.getKey() + 1, entry.getValue() + entry.getKey(), 0, 0);
+                    // 合并计划消耗合计行
+                    mergeCell(sheet, entry.getKey() + 1, entry.getValue() + entry.getKey(), 4, 4);
+                }
+            }
+            wb.write(outputStream);
+            outputStream.flush();
+        }
+        return BaseResponse.ok();
+    }
+
+    /**
+     * 合并单元格
+     *
+     * @param sheet
+     * @param firstRow 开始行
+     * @param lastRow  结束行
+     * @param firstCol 开始列
+     * @param lastCol  结束列
+     **/
+    private void mergeCell(Sheet sheet, int firstRow, int lastRow, int firstCol, int lastCol) {
+        // 合并的行列一样 就不需要合并
+        if (firstRow == lastRow && firstCol == lastCol) {
+            return;
+        }
+        sheet.addMergedRegion(new CellRangeAddress(firstRow, lastRow, firstCol, lastCol));
+    }
+}
