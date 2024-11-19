@@ -49,15 +49,17 @@ public class ExcelUtils {
                 .doWrite(data);
     }
 
-        /**
+         /**
      * 导出带下拉框的excel
      *
-     * @param fileName 文件名称
-     * @param data     数据
-     * @param clazz    class
-     * @param response resp
+     * @param fileName         文件名称
+     * @param data             数据
+     * @param clazz            class
+     * @param response         resp
+     * @param organizationList 组织机构下拉框
+     * @param typeList         类型下拉框
      */
-    public static void exportWithDropdown(String fileName, List<?> data, Class<?> clazz, HttpServletResponse response, List<String> dropDownList) throws IOException {
+    public static void exportWithDropdown(String fileName, List<?> data, Class<?> clazz, HttpServletResponse response, List<String> organizationList, List<String> typeList) throws IOException {
         EasyExcelFactory.write(response.getOutputStream(), clazz)
                 .head(clazz)
                 .registerWriteHandler(setCellStyle(fileName, response))
@@ -70,38 +72,53 @@ public class ExcelUtils {
                     @Override
                     public void afterSheetCreate(WriteWorkbookHolder writeSheet, WriteSheetHolder writeSheetHolder) {
                         Workbook workbook = writeSheetHolder.getSheet().getWorkbook();
-                        Sheet sheet = workbook.getSheetAt(0);
-                        // 下拉框的选择区域
-                        CellRangeAddressList cellRangeAddressList = new CellRangeAddressList(1, 100, 2, 2);
-                        DataValidationConstraint constraint;
-                        // 创建下拉框
-                        DataValidationHelper helper = sheet.getDataValidationHelper();
-                        // 下拉框数量小于40直接生成下拉框
-                        if (dropDownList.size() < 40) {
-                            constraint = helper.createExplicitListConstraint(dropDownList.toArray(new String[0]));
-                        }
-                        // 否则创建一个新工作表来存储下拉框选项
-                        else {
-                            Sheet dropdownSheet = workbook.createSheet("DropdownSource");
-                            for (int i = 0; i < dropDownList.size(); i++) {
-                                Row row = dropdownSheet.createRow(i);
-                                Cell cell = row.createCell(0);
-                                cell.setCellValue(dropDownList.get(i));
-                            }
-
-                            // 将 DropdownSource 工作表隐藏
-                            workbook.setSheetHidden(workbook.getSheetIndex(dropdownSheet), true);
-
-                            constraint = helper.createFormulaListConstraint("DropdownSource!$A$1:$A$" + dropDownList.size());
-                        }
-                        DataValidation dataValidation = helper.createValidation(constraint, cellRangeAddressList);
-                        // 设置下拉框
-                        sheet.addValidationData(dataValidation);
-
+                        setDropDownList(workbook, typeList, 1, 100, 1, 1);
+                        setDropDownList(workbook, organizationList, 1, 100, 2, 2);
                     }
                 })
                 .sheet(fileName)
                 .doWrite(data);
+    }
+
+    /**
+     * 设置下拉框
+     *
+     * @param workbook     文件
+     * @param dropDownList 下拉框框数据
+     * @param firstRow     开始行
+     * @param lastRow      结束行
+     * @param firstCol     开始列
+     * @param lastCol      结束列
+     */
+    private static void setDropDownList(Workbook workbook, List<String> dropDownList, int firstRow, int lastRow, int firstCol, int lastCol) {
+        if (CollUtil.isEmpty(dropDownList)) {
+            return;
+        }
+        Sheet sheet = workbook.getSheetAt(0);
+        // 下拉框的选择区域
+        CellRangeAddressList cellRangeAddressList = new CellRangeAddressList(firstRow, lastRow, firstCol, lastCol);
+        DataValidationConstraint constraint;
+        // 创建下拉框
+        DataValidationHelper helper = sheet.getDataValidationHelper();
+        // 下拉框数量小于20直接生成下拉框
+        if (dropDownList.size() < 20) {
+            constraint = helper.createExplicitListConstraint(dropDownList.toArray(new String[0]));
+        }
+        // 否则创建一个新工作表来存储下拉框选项
+        else {
+            Sheet dropdownSheet = workbook.createSheet("DropdownSource");
+            for (int i = 0; i < dropDownList.size(); i++) {
+                Row row = dropdownSheet.createRow(i);
+                Cell cell = row.createCell(0);
+                cell.setCellValue(dropDownList.get(i));
+            }
+            // 将 DropdownSource 工作表隐藏
+            workbook.setSheetHidden(workbook.getSheetIndex(dropdownSheet), true);
+            constraint = helper.createFormulaListConstraint("DropdownSource!$A$1:$A$" + dropDownList.size());
+        }
+        DataValidation dataValidation = helper.createValidation(constraint, cellRangeAddressList);
+        // 设置下拉框
+        sheet.addValidationData(dataValidation);
     }
 
     /**
