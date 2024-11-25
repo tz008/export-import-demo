@@ -1,0 +1,34 @@
+package cisdi.info.imc.common.entity.vo;
+
+import io.swagger.annotations.ApiModelProperty;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+import java.util.List;
+
+/**
+ * <p>
+ *  合并下拉框类
+ * </p>
+ *
+ * @author tz
+ * @since 2024-11-25 10:32
+ */
+@Data
+@AllArgsConstructor
+public class ExcelDropDownVO {
+    @ApiModelProperty(value = "下拉框列表")
+    List<String> dropDownList;
+
+    @ApiModelProperty(value = "开始行")
+    private Integer firstRow;
+
+    @ApiModelProperty(value = "结束行")
+    private Integer lastRow;
+
+    @ApiModelProperty(value = "开始列")
+    private Integer firstCol;
+
+    @ApiModelProperty(value = "结束列")
+    private Integer lastCol;
+}
