@@ -49,17 +49,16 @@ public class ExcelUtils {
                 .doWrite(data);
     }
 
-         /**
+    /**
      * 导出带下拉框的excel
      *
-     * @param fileName         文件名称
-     * @param data             数据
-     * @param clazz            class
-     * @param response         resp
-     * @param organizationList 组织机构下拉框
-     * @param typeList         类型下拉框
+     * @param fileName            文件名称
+     * @param data                数据
+     * @param clazz               class
+     * @param response            resp
+     * @param excelDropDownVOList 下拉框数据
      */
-    public static void exportWithDropdown(String fileName, List<?> data, Class<?> clazz, HttpServletResponse response, List<String> organizationList, List<String> typeList) throws IOException {
+    public static void exportWithDropdown(String fileName, List<?> data, Class<?> clazz, HttpServletResponse response, List<ExcelDropDownVO> excelDropDownVOList) throws IOException {
         EasyExcelFactory.write(response.getOutputStream(), clazz)
                 .head(clazz)
                 .registerWriteHandler(setCellStyle(fileName, response))
@@ -72,8 +71,9 @@ public class ExcelUtils {
                     @Override
                     public void afterSheetCreate(WriteWorkbookHolder writeSheet, WriteSheetHolder writeSheetHolder) {
                         Workbook workbook = writeSheetHolder.getSheet().getWorkbook();
-                        setDropDownList(workbook, typeList, 1, 100, 1, 1);
-                        setDropDownList(workbook, organizationList, 1, 100, 2, 2);
+                        for (ExcelDropDownVO excelDropDownVO : excelDropDownVOList) {
+                            setDropDownList(workbook, excelDropDownVO.getDropDownList(), excelDropDownVO.getFirstRow(), excelDropDownVO.getLastRow(), excelDropDownVO.getFirstCol(), excelDropDownVO.getLastCol());
+                        }
                     }
                 })
                 .sheet(fileName)
